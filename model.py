@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -6,6 +6,18 @@ from pydantic import BaseModel, Field
 from beanie import Document, PydanticObjectId
 
 import uuid
+
+class UserSubscription(Document):
+    userName: str
+    subscribedLists: Optional[List[PydanticObjectId]] = None 
+
+    createdDate: Optional[datetime] = None
+    updatedDate: Optional[datetime] = None
+
+class CreateUpdateUserSubscription(BaseModel):
+    userName: str
+    subscribedLists: List[PydanticObjectId]
+
 
 class TodoList(Document):
     name: str
@@ -42,5 +54,5 @@ class CreateUpdateTodoItem(BaseModel):
     dueDate: Optional[datetime] = None
     completedDate: Optional[datetime] = None
 
-__beanie_models__ = [TodoList, TodoItem]
+__beanie_models__ = [TodoList, TodoItem, UserSubscription]
 

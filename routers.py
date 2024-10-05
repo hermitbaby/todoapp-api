@@ -1,7 +1,8 @@
 from fastapi import Request, HTTPException, Response
 from starlette.requests import Request
 from model import (CreateUpdateTodoItem, CreateUpdateTodoList, TodoItem,
-                     TodoList, TodoState)
+                     TodoList, TodoState,
+                     UserSubscription, CreateUpdateUserSubscription )
 
 from main import app
 
@@ -9,8 +10,58 @@ from datetime import datetime
 from typing import List, Optional
 from urllib.parse import urljoin
 from beanie import PydanticObjectId
+from beanie.operators import In
 
 # router = APIRouter()
+currentUser = "jack"
+
+@app.get("/subscriptions", response_model=List[UserSubscription], response_model_by_alias=False)
+async def get_subscriptions(
+    top: Optional[int] = None, skip: Optional[int] = None
+) -> List[UserSubscription]:
+    """
+    Get all subscriptions
+
+    Optional arguments:
+
+    - **top**: Number of lists to return
+    - **skip**: Number of lists to skip
+    """
+    query = UserSubscription.all().skip(skip).limit(top)
+    return await query.to_list()
+
+
+@app.post("/subscriptions", response_model=UserSubscription, response_model_by_alias=False, status_code=201)
+async def create_subscription(body: CreateUpdateUserSubscription, request: Request, response: Response) -> UserSubscription:
+    """
+    Create a new UserSubscription
+    """
+    user_subscription = await UserSubscription(**body.dict(), createdDate=datetime.utcnow()).save()
+    # response.headers["Location"] = urljoin(str(request.base_url), "lists/{0}".format(str(todo_list.id)))
+    return user_subscription
+
+
+@app.get("/subscriptions/items", response_model=List[TodoItem], response_model_by_alias=False)
+async def get_subscribed_items(
+    top: Optional[int] = None,
+    skip: Optional[int] = None,
+) -> List[TodoItem]:
+    """
+    Gets Todo items within the subscribed list
+
+    Optional arguments:
+
+    - **top**: Number of lists to return
+    - **skip**: Number of lists to skip
+    """
+    sub = await UserSubscription.find_one(UserSubscription.userName == currentUser)
+    todolist = sub.subscribedLists
+    # print(todolist)
+    query = TodoItem.find(
+                In(TodoItem.listId, todolist)
+            ).sort(+TodoItem.updatedDate, +TodoItem.createdDate
+            ).skip(skip).limit(top)
+    return await query.to_list()
 
 @app.get("/lists", response_model=List[TodoList], response_model_by_alias=False)
 async def get_lists(
